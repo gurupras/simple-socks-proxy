@@ -23,9 +23,7 @@ func (d *DNSProxy) handleRequest(w dns.ResponseWriter, req *dns.Msg) {
 	resp := new(dns.Msg)
 	resp.SetReply(req)
 
-	resolver := &net.Resolver{
-		PreferGo: true,
-	}
+	resolver := &net.Resolver{}
 
 	for _, q := range req.Question {
 		switch q.Qtype {
