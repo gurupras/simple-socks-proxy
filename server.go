@@ -1,6 +1,7 @@
 package simplesocksproxy
 
 import (
+	"fmt"
 	"io"
 	"log"
 	"net"
@@ -65,13 +66,41 @@ func handleConn(netConn net.Conn, sshCfg *ssh.ServerConfig) {
 			continue
 		}
 
-		channel, requests, err := newChannel.Accept()
+		var payload struct {
+			DestAddr string
+			DestPort uint32
+			OrigAddr string
+			OrigPort uint32
+		}
+		ssh.Unmarshal(newChannel.ExtraData(), &payload)
+
+		dest := fmt.Sprintf("%s:%d", payload.DestAddr, payload.DestPort)
+		log.Printf("Forwarding to %s", dest)
+
+		upstream, err := net.Dial("tcp", dest)
 		if err != nil {
-			log.Println("Failed to accept channel:", err)
+			newChannel.Reject(ssh.ConnectionFailed, err.Error())
 			continue
 		}
 
-		go handleSOCKS(channel, requests)
+		channel, _, err := newChannel.Accept()
+		if err != nil {
+			log.Println("Channel accept error:", err)
+			upstream.Close()
+			continue
+		}
+
+		// Bi-directional copy
+		go func() {
+			defer channel.Close()
+			defer upstream.Close()
+			io.Copy(channel, upstream)
+		}()
+		go func() {
+			defer channel.Close()
+			defer upstream.Close()
+			io.Copy(upstream, channel)
+		}()
 	}
 }
 
