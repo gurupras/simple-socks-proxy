@@ -58,7 +58,8 @@ func handleConn(netConn net.Conn, sshCfg *ssh.ServerConfig) {
 
 	log.Printf("New SSH connection from %s", sshConn.RemoteAddr())
 
-	go ssh.DiscardRequests(reqs)
+	forwarder := NewForwarder()
+	go handleGlobalRequests(sshConn, reqs, forwarder)
 
 	for newChannel := range chans {
 		if newChannel.ChannelType() != "direct-tcpip" {
