@@ -38,6 +38,10 @@ func main() {
 		return nil
 	})
 
+	defer simplesocksproxy.AllowSleep()
+
+	simplesocksproxy.PreventSleep()
+
 	flag.Parse()
 
 	var wg sync.WaitGroup
